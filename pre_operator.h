@@ -82,7 +82,8 @@ namespace yyh
 	public:
 		static std::vector<operation> text;
 		static std::map<std::string, int>text_label;
-		static std::vector<std::string> tmp_store;
+		static std::vector<std::string> tmp_tl;
+		static std::vector<std::string> tmp_ll;
 		static void push_command(const std::string& com, scanner& sen);
 		static void push_label(const std::string& lab);
 	public:
