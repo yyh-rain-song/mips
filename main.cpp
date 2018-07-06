@@ -10,10 +10,6 @@ int main()
 
 	std::ifstream in("a.in");
 	read_in(in);
-	std::cout << at_label("label_1") << '\n';
-	std::cout << at_label("label_2") << '\n';
-	std::cout << at_label("ll") << '\n';
-	std::cout << at_label("label_3") << '\n';
-	std::cout << at_label("label_4") << '\n';
+	run_();
 	std::cout << "over";
 }
