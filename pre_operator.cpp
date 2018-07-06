@@ -5,7 +5,8 @@ using namespace yyh;
 std::map<std::string, int> token::Key_word;
 std::vector<operation> operation::text;
 std::map<std::string, int> operation::text_label;
-std::vector<std::string> operation::tmp_store;
+std::vector<std::string> operation::tmp_tl;
+std::vector<std::string> operation::tmp_ll;
 
 scanner::scanner(const std::string & instring)
 {
@@ -262,6 +263,12 @@ void yyh::read_in(std::ifstream & in)
 					sentence.nextToken(take);
 					_asciiz(take.store);
 				}
+				else if (take.store == ".align")
+				{
+					sentence.nextToken(take);
+					int n = string_to_int(take.store);
+					_align(n);
+				}
 			}
 			else
 			{
@@ -270,14 +277,19 @@ void yyh::read_in(std::ifstream & in)
 			}
 		}
 	}
-	//deal with labels (operation::tmp_store)
+	//deal with labels (operation::tmp_ll tmp_tl)
 	for(int i = 0; i < operation::text.size(); i++)
 	{
 		operation *tt = &operation::text[i];
 		if (tt->type >= 48 && tt->type <= 54 && tt->reg1 == -1)
 		{
-			std::string lab = operation::tmp_store[tt->number];
+			std::string lab = operation::tmp_ll[tt->number];
 			tt->number = Labels[lab];
+		}
+		else if ((tt->type >= 31 && tt->type <= 44) || (tt->type == 46))
+		{
+			std::string lab = operation::tmp_tl[tt->number];
+			tt->number = operation::text_label[lab];
 		}
 	}
 }
@@ -286,10 +298,13 @@ void yyh::run_()
 {
 	int current_line = operation::text_label["main"];
 	operation* op = NULL;
+	Registers[32] = current_line + 1;
 	while (current_line < operation::text.size())
 	{
-		*op = operation::text[current_line];
+		op = &operation::text[current_line];
 		op->execute();
+		if (op->type == 46 || op->type == 47)
+			Registers[31] = current_line + 1;
 		current_line = Registers[32];
 		Registers[32]++;
 	}
@@ -410,7 +425,8 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		* cases that fetch a label
 		*/
 		sen.nextToken(tmp);//label
-		dest = text_label[tmp.store];
+		tmp_tl.push_back(tmp.store);
+		number = tmp_tl.size() - 1;
 		break;
 	case 32:
 	case 33:
@@ -434,7 +450,8 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 			number = string_to_int(tmp.store);
 		}
 		sen.nextToken(tmp);//label
-		dest = text_label[tmp.store];
+		tmp_tl.push_back(tmp.store);
+		number = tmp_tl.size() - 1;
 		break;
 	case 38:
 	case 39:
@@ -448,7 +465,8 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		sen.nextToken(tmp);//register1
 		reg1 = reg_num[tmp.store];
 		sen.nextToken(tmp);//label
-		dest = text_label[tmp.store];
+		tmp_tl.push_back(tmp.store);
+		number = tmp_tl.size() - 1;
 		break;
 	case 45:
 	case 47:
@@ -481,9 +499,9 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		}
 		else
 		{
-			tmp_store.push_back(tmp.store);
+			tmp_ll.push_back(tmp.store);
 			reg1 = -1;
-			number = tmp_store.size() - 1;
+			number = tmp_ll.size() - 1;
 		}
 		break;
 	default://nop syscall not done
@@ -493,7 +511,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 
 void yyh::operation::execute()
 {
-	int ob1, ob2;
+	int ob1 = -111, ob2 = -111;
 	if ((type >= 9 && type <= 19) || (type >= 22 && type <= 23) || (type >= 32 && type <= 37)
 		|| (type >= 25 && type <= 30))//binary operation
 	{
@@ -644,7 +662,150 @@ void yyh::operation::execute()
 		}
 	}
 
-	//else if()
+	else if (type == 20 || type == 21 || type == 24 || type == 55)
+	{
+		if (reg1 != -1) ob1 = Registers[reg1];
+		else ob1 = number;
+		switch (type)
+		{
+		case 20:
+			anser = -1 * ob1;
+			Registers[dest] = anser;
+			break;
+		case 21:
+			anser = ~ob1;
+			Registers[dest] = anser;
+			break;
+		case 24:
+		case 55:
+			anser = ob1;
+			Registers[dest] = anser;
+			break;
+		default:
+			break;
+		}
+	}
+
+	else if (type == 31 || type == 44 || type == 46)
+	{
+		ob1 = dest;
+		Registers[32] = ob1;
+		anser = ob1;
+	}
+
+	else if (type >= 48 && type <= 54)
+	{
+		if (reg1 == -1)
+			ob1 = number;//memory address
+		else ob1 = Registers[reg1] + number;//pointer
+		switch (type)
+		{
+		case 48:
+			Registers[dest] = ob1;
+			break;
+		case 49:
+			Registers[dest] = Memory[ob1];
+			break;
+		case 50:
+			Registers[dest] = *(short*)(Memory + ob1);
+			break;
+		case 51:
+			Registers[dest] = *(int*)(Memory + ob1);
+			break;
+		case 52:
+			Memory[ob1] = Registers[dest];
+			break;
+		case 53:
+			*(short*)(Memory + ob1) = Registers[dest];
+			break;
+		case 54:
+			*(int*)(Memory + ob1) = Registers[dest];
+			break;
+		default:
+			break;
+		}
+	}
+
+	else if (type >= 38 && type <= 43)
+	{
+		ob1 = Registers[reg1];
+		switch (type)
+		{
+		case 38:
+			if (ob1 == 0)
+				Registers[32] = number;
+			break;
+		case 39:
+			if (ob1 != 0)
+				Registers[32] = number;
+			break;
+		case 40:
+			if (ob1 <= 0)
+				Registers[32] = number;
+			break;
+		case 41:
+			if (ob1 >= 0)
+				Registers[32] = number;
+			break;
+		case 42:
+			if (ob1 > 0)
+				Registers[32] = number;
+			break;
+		case 43:
+			if (ob1 < 0)
+				Registers[32] = number;
+			break;
+		default:
+			break;
+		}
+	}
+
+	else if (type == 45 || type == 47)
+	{
+		Registers[32] = Registers[dest];
+	}
+	else if (type == 56)
+	{
+		Registers[dest] = Registers[26];
+	}
+	else if (type == 57)
+	{
+		Registers[dest] = Registers[27];
+	}
+	else if (type == 59)//syscall
+	{
+		std::string ss;
+		char *p;
+		switch (Registers[2])
+		{
+		case 1:
+			std::cout << Registers[4];
+			break;
+		case 4:
+			std::cout << (char*)(Memory + Registers[4]);
+			break;
+		case 5:
+			std::cin >> Registers[2];
+			break;
+		case 8:
+			std::cin >> ss;
+			ss += '\0';
+			p = Memory + Registers[4];
+			strncpy(p, ss.c_str(), ss.length());
+			Registers[5] = ss.length();
+			break;
+		case 9:
+			Registers[2] = memory_pos;
+			memory_pos += Registers[4];
+			break;
+		case 10:
+			exit(0);
+		case 17:
+			exit(Registers[4]);
+		default:
+			break;
+		}
+	}
 }
 yyh::pointer::pointer()
 {
