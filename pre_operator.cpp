@@ -612,17 +612,39 @@ void yyh::operation::execute()
 			break;
 		case 32:
 			anser = (ob1 == ob2);
-
+			if (anser)
+				Registers[32] = number;
+			break;
 		case 33:
+			anser = (ob1 != ob2);
+			if (anser)
+				Registers[32] = number;
+			break;
 		case 34:
+			anser = (ob1 >= ob2);
+			if (anser)
+				Registers[32] = number;
+			break;
 		case 35:
+			anser = (ob1 <= ob2);
+			if (anser)
+				Registers[32] = number;
+			break;
 		case 36:
+			anser = (ob1 > ob2);
+			if (anser)
+				Registers[32] = number;
+			break;
 		case 37:
+			anser = (ob1 < ob2);
+			if (anser)
+				Registers[32] = number;
+			break;
 		default: break;
 		}
 	}
 
-
+	//else if()
 }
 yyh::pointer::pointer()
 {
