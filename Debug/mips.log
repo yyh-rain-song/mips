@@ -1,0 +1,11 @@
+﻿  main.cpp
+  pre_operator.cpp
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(126): warning C4018: “<”: 有符号/无符号不匹配
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(138): warning C4018: “<”: 有符号/无符号不匹配
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(161): warning C4018: “<”: 有符号/无符号不匹配
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(274): warning C4018: “<”: 有符号/无符号不匹配
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(289): warning C4018: “<”: 有符号/无符号不匹配
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(532): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+d:\my_file\project\ppca\mips\mips\pre_operator.cpp(546): warning C4244: “=”: 从“unsigned __int64”转换到“int”，可能丢失数据
+  正在生成代码...
+  mips.vcxproj -> D:\my_file\project\ppca\mips\Debug\mips.exe

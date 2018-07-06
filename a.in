@@ -1,0 +1,8 @@
+#self test about read_in
+
+.text
+
+add $1 2
+sub $3 $1
+neg $5 $1
+
