@@ -5,6 +5,7 @@ namespace yyh
 	int Registers[33];
 	char Memory[4 * 1024 * 1024];
 	std::map<std::string, int> Labels;
+	int memory_pos = 0;
 }
 
 void yyh::reg_num_init()
@@ -57,14 +58,17 @@ int yyh::at_register(const std::string & s)
 
 void yyh::insert_memory_label(const std::string & s)
 {
-	Labels[s] = Registers[30];
+	Labels[s] = memory_pos;
 }
 
 int yyh::at_label(const std::string & s)
 {
 	return Labels[s];
 }
-
+void yyh::_align(int n)
+{
+	memory_pos = 1 << n;
+}
 void yyh::_ascii(const std::string & s)
 {
 	for (int i = 0; i < s.length(); i++)
@@ -79,26 +83,26 @@ void yyh::_asciiz(const std::string & s)
 
 void yyh::_byte(const char a)
 {
-	char* pointer = Memory + Registers[30];
+	char* pointer = Memory + memory_pos;
 	*pointer = a;
-	++Registers[30];
+	++memory_pos;
 }
 
 void yyh::_half(short int a)
 {
-	short int* pointer = (short int*)(Memory + Registers[30]);
+	short int* pointer = (short int*)(Memory + memory_pos);
 	*pointer = a;
-	Registers[30] += 2;
+	memory_pos += 2;
 }
 
 void yyh::_word(int a)
 {
-	int* pointer = (int*)(Memory + Registers[30]);
+	int* pointer = (int*)(Memory + memory_pos);
 	*pointer = a;
-	Registers[30] += 4;
+	memory_pos += 4;
 }
 
 void yyh::_space(int n)
 {
-	Registers[30] += n;
+	memory_pos += n;
 }
