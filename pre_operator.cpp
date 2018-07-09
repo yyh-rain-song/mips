@@ -850,10 +850,10 @@ void yyh::operation::execute()
 		switch (Registers[2])
 		{
 		case 1:
-			out << Registers[4];
+			std::cout << Registers[4];
 			break;
 		case 4:
-			out << (char*)(Memory + Registers[4]);
+			std::cout << (char*)(Memory + Registers[4]);
 			break;
 		case 5:
 			std::cin >> Registers[2];

@@ -5,15 +5,13 @@ using namespace yyh;
 namespace yyh
 {
 	std::string empty = "";
-	std::ofstream out("a.out");
-	std::ifstream in("a.in");
 }
-int main()
+int main(int argc, char *argv[])
 {
 	token::initialize_keyword();
 	reg_num_init();
-	std::ifstream text("1.s");
+	std::ifstream text(argv[1]);
 	read_in(text);
 	run_();
-	std::cout << "over";
+	text.close();
 }

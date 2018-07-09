@@ -14,8 +14,6 @@
 #include <cstring>
 namespace yyh
 {
-	extern std::ifstream in;
-	extern std::ofstream out;
 	class token
 	{
 	public:
