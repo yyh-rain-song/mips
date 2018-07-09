@@ -2,7 +2,7 @@
 namespace yyh
 {
 	std::map<std::string, int> reg_num;
-	int Registers[33];
+	int Registers[35];
 	char Memory[4 * 1024 * 1024];
 	std::map<std::string, int> Labels;
 	int memory_pos = 0;
@@ -40,8 +40,8 @@ void yyh::reg_num_init()
 	reg_num["$29"] = reg_num["$sp"] = 29;
 	reg_num["$30"] = reg_num["$fp"] = 30;
 	reg_num["$31"] = reg_num["$ra"] = 31;
-	reg_num["$hi"] = 26;
-	reg_num["$lo"] = 27;
+	reg_num["$hi"] = 33;
+	reg_num["$lo"] = 34;
 	reg_num["$pc"] = 32;
 
 	for (int i = 0; i < 32; i++)

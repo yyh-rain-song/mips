@@ -23,21 +23,47 @@ yyh::scanner::scanner()
 
 bool scanner::nextToken(token & tout)//if continuous "      "??
 {
+	tout.store = "";
 	if (store == "") return false;
-	std::istringstream in(store);
-	in >> tout.store;
-	
-	//delete the read token in scanner(without ' ')
-	std::string::iterator it = store.begin();
-	while (it != store.end() && *it != ' ') it++;
-	if (it != store.end()) it++;
-	store.erase(store.begin(), it);
+	//special judge for "string with white space"
 
-	//delete the front ' '
+	std::string::iterator it = store.begin();
+	while (it != store.end() && (*it == ' ' || *it == '\t')) it++;
+	//delete white space
+	store.erase(store.begin(), it);
 	it = store.begin();
-	while (it != store.end() && *it == ' ')
-		store.erase(it);
-	
+	if (it == store.end()) return false;
+
+	if (*it == '\"')
+	{
+		tout.store += (*it);
+		it++;
+		while (it != store.end())
+		{
+			if (*it == '\"' && *(it - 1) != '\\') break;
+			tout.store += (*it);
+			it++;
+		}
+		tout.store += (*it);
+		store.erase(store.begin(), it + 1);
+	}
+	else
+	{
+		std::istringstream in(store);
+		in >> tout.store;
+
+		//delete the read token in scanner(without ' ')
+		std::string::iterator it = store.begin();
+		while (it != store.end() && *it != ' ') it++;
+		if (it != store.end()) it++;
+		store.erase(store.begin(), it);
+
+		//delete the front ' '
+		it = store.begin();
+		while (it != store.end() && *it == ' ')
+			store.erase(it);
+	}
+	if (tout.store == "") return false;
 	//deal with token
 	tout.getType();
 	return true;
@@ -74,10 +100,10 @@ void token::getType()
 	if (store[0] == '\"')//string
 	{
 		type = String;
-		store.erase(store.end() - 1);
-		store.erase(store.begin());
 		//deal with '\n' '\t'
 		std::string::iterator it = store.begin();
+		store.erase(it);
+		store.erase(store.end() - 1);
 		while (it != store.end())
 		{
 			if (*it != '\\')
@@ -197,8 +223,18 @@ void yyh::read_in(std::ifstream & in)
 	scanner sentence;
 	token take;
 	bool data_state = true;
+//#define debug
+
+	int i = 0;
 	while (std::getline(in, str))
 	{
+#ifdef debug
+		if (i == 617)
+			std::cout << "c";
+		std::cout << i;
+		i++;
+		std::cout << str;
+#endif
 		sentence = scanner(str);
 		if (!sentence.nextToken(take)) continue;
 		if (take.type == token::Command && take.store == ".data")
@@ -300,7 +336,7 @@ void yyh::read_in(std::ifstream & in)
 		}
 	}
 }
-#define debug
+//#define debug
 void yyh::run_()
 {
 	int current_line = operation::text_label["main"];
@@ -318,11 +354,11 @@ void yyh::run_()
 
 #ifdef debug
 		std::cout << "line " << i;
-		if (i == 140)
+		if (i == 321)
 			std::cout << "catch";
 		i++;
 		std::cout << op->context << '\n';
-		for (int j = 0; j < 32; j++)
+		for (int j = 0; j < 35; j++)
 			std::cout << Registers[j] << ' ';
 		std::cout << '\n';
 #endif
@@ -395,27 +431,31 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		*/
 		sen.nextToken(tmp);//dest register
 		dest = reg_num[tmp.store];
+
 		sen.nextToken(tmp);//register1
 		if (tmp.type == token::Register)
-		{
 			reg1 = reg_num[tmp.store];
-		}
-		else
+		else//reg + num
 		{
 			reg1 = -1;
-			reg2 = -1;
 			number = string_to_int(tmp.store);
 			break;
 		}
-		sen.nextToken(tmp);//register2 or immediate number
-		if (tmp.type == token::Register)
+
+		if (sen.nextToken(tmp))//have register2 or immediate number)
 		{
-			reg2 = reg_num[tmp.store];
+			if (tmp.type == token::Register)
+				reg2 = reg_num[tmp.store];
+			else
+			{
+				reg2 = -1;
+				number = string_to_int(tmp.store);
+			}
 		}
-		else
+		else//reg reg
 		{
-			reg2 = -1;
-			number = string_to_int(tmp.store);
+			reg2 = reg1;
+			reg1 = -1;
 		}
 		break;
 	case 20:
@@ -430,7 +470,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		sen.nextToken(tmp);//register1 or immediate number
 		if (tmp.type == token::Register)
 		{
-			reg1= reg_num[tmp.store];
+			reg1 = reg_num[tmp.store];
 		}
 		else
 		{
@@ -563,9 +603,12 @@ void yyh::operation::execute()
 			else
 			{
 				ob1 = Registers[dest];
+				if(reg2 != -1)
+					ob2 = Registers[reg2];
+				else ob2 = number;
 				long long tmp = (long long)(ob1) * (long long)(ob2);
-				Registers[27] = tmp;
-				Registers[26] = tmp >> 32;
+				Registers[34] = tmp;
+				Registers[33] = tmp >> 32;
 			}
 			break;
 		case 15:
@@ -577,9 +620,12 @@ void yyh::operation::execute()
 			else
 			{
 				ob1 = Registers[dest];
+				if (reg2 != -1)
+					ob2 = Registers[reg2];
+				else ob2 = number;
 				unsigned long long tmp = (unsigned long long)(ob1) * (unsigned long long)(ob2);
-				Registers[27] = tmp;
-				Registers[26] = tmp >> 32;
+				Registers[34] = tmp;
+				Registers[33] = tmp >> 32;
 			}
 			break;
 		case 16:
@@ -591,8 +637,11 @@ void yyh::operation::execute()
 			else
 			{
 				ob1 = Registers[dest];
-				Registers[27] = ob1 / ob2;
-				Registers[26] = ob1 % ob2;
+				if (reg2 != -1)
+					ob2 = Registers[reg2];
+				else ob2 = number;
+				Registers[34] = ob1 / ob2;
+				Registers[33] = ob1 % ob2;
 			}
 			break;
 		case 17:
@@ -604,8 +653,11 @@ void yyh::operation::execute()
 			else
 			{
 				ob1 = Registers[dest];
-				Registers[27] = (unsigned int)(ob1) / (unsigned int)(ob2);
-				Registers[26] = (unsigned int)(ob1) % (unsigned int)(ob2);
+				if (reg2 != -1)
+					ob2 = Registers[reg2];
+				else ob2 = number;
+				Registers[34] = (unsigned int)(ob1) / (unsigned int)(ob2);
+				Registers[33] = (unsigned int)(ob1) % (unsigned int)(ob2);
 			}
 			break;
 		case 18:
@@ -715,7 +767,7 @@ void yyh::operation::execute()
 	else if (type >= 48 && type <= 54)
 	{
 		if (reg1 == -1)
-			ob1 = number;//memory address
+			ob1 = number;//label
 		else ob1 = Registers[reg1] + number;//pointer
 		switch (type)
 		{
@@ -785,11 +837,11 @@ void yyh::operation::execute()
 	}
 	else if (type == 56)//mfhi
 	{
-		Registers[dest] = Registers[26];
+		Registers[dest] = Registers[33];
 	}
 	else if (type == 57)//mflo
 	{
-		Registers[dest] = Registers[27];
+		Registers[dest] = Registers[34];
 	}
 	else if (type == 59)//syscall
 	{

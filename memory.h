@@ -4,7 +4,7 @@
 namespace yyh
 {
 	extern std::map<std::string, int> reg_num;
-	extern int Registers[33];
+	extern int Registers[35];
 	extern int memory_pos;
 	extern char Memory[4 * 1024 * 1024];
 	extern std::map<std::string, int> Labels;
