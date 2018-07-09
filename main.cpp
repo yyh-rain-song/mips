@@ -2,14 +2,18 @@
 #include "memory.h"
 #include <fstream>
 using namespace yyh;
-std::string empty = "";
+namespace yyh
+{
+	std::string empty = "";
+	std::ofstream out("a.out");
+	std::ifstream in("a.in");
+}
 int main()
 {
 	token::initialize_keyword();
 	reg_num_init();
-
-	std::ifstream in("a.in");
-	read_in(in);
+	std::ifstream text("1.s");
+	read_in(text);
 	run_();
 	std::cout << "over";
 }

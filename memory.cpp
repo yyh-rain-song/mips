@@ -67,7 +67,8 @@ int yyh::at_label(const std::string & s)
 }
 void yyh::_align(int n)
 {
-	memory_pos = 1 << n;
+	int pos = 1 << n;
+	while (memory_pos % pos != 0) memory_pos++;
 }
 void yyh::_ascii(const std::string & s)
 {

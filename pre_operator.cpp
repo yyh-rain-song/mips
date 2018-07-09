@@ -71,7 +71,7 @@ void token::getType()
 {
 	std::string::iterator it = store.end() - 1;
 	if (*it == ',') store.erase(it);
-	if (store[0] == '"')//string
+	if (store[0] == '\"')//string
 	{
 		type = String;
 		store.erase(store.end() - 1);
@@ -87,21 +87,20 @@ void token::getType()
 			}
 			else //deal with special cases
 			{
-				std::string::iterator ne = it + 1;
 				store.erase(it);
-				if (*ne == '\\')
+				if (*it == '\\')
 				{
 				}
-				else if (*ne == 'n')
-					*ne = '\n';
-				else if (*ne == 't')
-					*ne = '\t';
-				else if (*ne == '\'')
-					*ne = '\'';
-				else if (*ne == '\"')
-					*ne = '\"';
-				else if (*ne == '0')
-					*ne = '\0';
+				else if (*it == 'n')
+					*it = '\n';
+				else if (*it == 't')
+					*it = '\t';
+				else if (*it == '\'')
+					*it = '\'';
+				else if (*it == '\"')
+					*it = '\"';
+				else if (*it == '0')
+					*it = '\0';
 			}
 		}
 		return;
@@ -200,18 +199,18 @@ void yyh::read_in(std::ifstream & in)
 	bool data_state = true;
 	while (std::getline(in, str))
 	{
-		if (strncmp(str.c_str(), ".data", 5) == 0)
+		sentence = scanner(str);
+		if (!sentence.nextToken(take)) continue;
+		if (take.type == token::Command && take.store == ".data")
 		{
 			data_state = true;
 			continue;
 		}
-		if (strncmp(str.c_str(), ".text", 5) == 0)
+		if (take.type == token::Command && take.store == ".text")
 		{
 			data_state = false;
 			continue;
 		}
-		sentence = scanner(str);
-		if (!sentence.nextToken(take)) continue;
 		if (take.type == token::Label)
 		{
 			if (data_state)
@@ -277,28 +276,37 @@ void yyh::read_in(std::ifstream & in)
 			}
 		}
 	}
-	//deal with labels (operation::tmp_ll tmp_tl)
+	//deal with labels (stored in context)
 	for(int i = 0; i < operation::text.size(); i++)
 	{
 		operation *tt = &operation::text[i];
+		//memory label
 		if (tt->type >= 48 && tt->type <= 54 && tt->reg1 == -1)
 		{
-			std::string lab = operation::tmp_ll[tt->number];
+			token tmp;
+			scanner sen(tt->context);
+			sen.nextToken(tmp);
+			std::string lab = tmp.store;
 			tt->number = Labels[lab];
 		}
+		//text label
 		else if ((tt->type >= 31 && tt->type <= 44) || (tt->type == 46))
 		{
-			std::string lab = operation::tmp_tl[tt->number];
-			tt->number = operation::text_label[lab];
+			token tmp;
+			scanner sen(tt->context);
+			sen.nextToken(tmp);
+			std::string lab = tmp.store;
+			tt->dest = operation::text_label[lab];
 		}
 	}
 }
-
+#define debug
 void yyh::run_()
 {
 	int current_line = operation::text_label["main"];
 	operation* op = NULL;
 	Registers[32] = current_line + 1;
+	int i = 0;
 	while (current_line < operation::text.size())
 	{
 		op = &operation::text[current_line];
@@ -307,6 +315,17 @@ void yyh::run_()
 			Registers[31] = current_line + 1;
 		current_line = Registers[32];
 		Registers[32]++;
+
+#ifdef debug
+		std::cout << "line " << i;
+		if (i == 140)
+			std::cout << "catch";
+		i++;
+		std::cout << op->context << '\n';
+		for (int j = 0; j < 32; j++)
+			std::cout << Registers[j] << ' ';
+		std::cout << '\n';
+#endif
 	}
 }
 
@@ -327,6 +346,7 @@ yyh::operation::operation()
 
 yyh::operation::operation(const std::string & com, scanner & sen)//sen: the remaining sentence
 {
+	context = com + sen.store;
 	type = token::Key_word[com];
 	dest = reg1 = reg2 = -1;
 	number = 0;
@@ -425,8 +445,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		* cases that fetch a label
 		*/
 		sen.nextToken(tmp);//label
-		tmp_tl.push_back(tmp.store);
-		number = tmp_tl.size() - 1;
+		context = tmp.store + " " + context;
 		break;
 	case 32:
 	case 33:
@@ -450,8 +469,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 			number = string_to_int(tmp.store);
 		}
 		sen.nextToken(tmp);//label
-		tmp_tl.push_back(tmp.store);
-		number = tmp_tl.size() - 1;
+		context = tmp.store + " " + context;
 		break;
 	case 38:
 	case 39:
@@ -465,8 +483,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 		sen.nextToken(tmp);//register1
 		reg1 = reg_num[tmp.store];
 		sen.nextToken(tmp);//label
-		tmp_tl.push_back(tmp.store);
-		number = tmp_tl.size() - 1;
+		context = tmp.store + " " + context;
 		break;
 	case 45:
 	case 47:
@@ -497,14 +514,13 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 			reg1 = po.reg_number;
 			number = po.pass;
 		}
-		else
+		else//label
 		{
-			tmp_ll.push_back(tmp.store);
 			reg1 = -1;
-			number = tmp_ll.size() - 1;
+			context = tmp.store + " " + context;
 		}
 		break;
-	default://nop syscall not done
+	default://nop syscall
 		break;
 	}
 }
@@ -520,6 +536,7 @@ void yyh::operation::execute()
 		else ob2 = number;
 		switch (type)
 		{
+			//case 9-19 22 23 25-30 are logical operatiors,thus we store anser in operation
 		case 9:
 			anser = ob1 + ob2;
 			Registers[dest] = anser;
@@ -540,7 +557,7 @@ void yyh::operation::execute()
 		case 14:
 			if (reg1 != -1)
 			{
-				anser = ob1 * ob2;
+				long long anser = (long long)(ob1) * (long long)(ob2);
 				Registers[dest] = anser;
 			}
 			else
@@ -628,40 +645,41 @@ void yyh::operation::execute()
 			anser = (ob1 != ob2);
 			Registers[dest] = anser;
 			break;
+			//case 32-37 are b operations, anser stores the outcome of calculation, and label stores in dest
 		case 32:
 			anser = (ob1 == ob2);
 			if (anser)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 33:
 			anser = (ob1 != ob2);
 			if (anser)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 34:
 			anser = (ob1 >= ob2);
 			if (anser)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 35:
 			anser = (ob1 <= ob2);
 			if (anser)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 36:
 			anser = (ob1 > ob2);
 			if (anser)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 37:
 			anser = (ob1 < ob2);
 			if (anser)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		default: break;
 		}
 	}
-
+	//in the following four cases, there's only one register (or number) involved
 	else if (type == 20 || type == 21 || type == 24 || type == 55)
 	{
 		if (reg1 != -1) ob1 = Registers[reg1];
@@ -676,7 +694,8 @@ void yyh::operation::execute()
 			anser = ~ob1;
 			Registers[dest] = anser;
 			break;
-		case 24:
+		case 24://li Register[dest] = (the number stored in operation, ob1)
+
 		case 55:
 			anser = ob1;
 			Registers[dest] = anser;
@@ -685,14 +704,14 @@ void yyh::operation::execute()
 			break;
 		}
 	}
-
+	//b j jar
 	else if (type == 31 || type == 44 || type == 46)
 	{
 		ob1 = dest;
 		Registers[32] = ob1;
 		anser = ob1;
 	}
-
+	//load store commands
 	else if (type >= 48 && type <= 54)
 	{
 		if (reg1 == -1)
@@ -725,7 +744,7 @@ void yyh::operation::execute()
 			break;
 		}
 	}
-
+	//break and jump command
 	else if (type >= 38 && type <= 43)
 	{
 		ob1 = Registers[reg1];
@@ -733,42 +752,42 @@ void yyh::operation::execute()
 		{
 		case 38:
 			if (ob1 == 0)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 39:
 			if (ob1 != 0)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 40:
 			if (ob1 <= 0)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 41:
 			if (ob1 >= 0)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 42:
 			if (ob1 > 0)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		case 43:
 			if (ob1 < 0)
-				Registers[32] = number;
+				Registers[32] = dest;
 			break;
 		default:
 			break;
 		}
 	}
-
+	//jr jar
 	else if (type == 45 || type == 47)
 	{
 		Registers[32] = Registers[dest];
 	}
-	else if (type == 56)
+	else if (type == 56)//mfhi
 	{
 		Registers[dest] = Registers[26];
 	}
-	else if (type == 57)
+	else if (type == 57)//mflo
 	{
 		Registers[dest] = Registers[27];
 	}
@@ -779,10 +798,10 @@ void yyh::operation::execute()
 		switch (Registers[2])
 		{
 		case 1:
-			std::cout << Registers[4];
+			out << Registers[4];
 			break;
 		case 4:
-			std::cout << (char*)(Memory + Registers[4]);
+			out << (char*)(Memory + Registers[4]);
 			break;
 		case 5:
 			std::cin >> Registers[2];

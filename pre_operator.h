@@ -14,6 +14,8 @@
 #include <cstring>
 namespace yyh
 {
+	extern std::ifstream in;
+	extern std::ofstream out;
 	class token
 	{
 	public:
@@ -87,6 +89,7 @@ namespace yyh
 		static void push_command(const std::string& com, scanner& sen);
 		static void push_label(const std::string& lab);
 	public:
+		std::string context;
 		int reg1, reg2;//the operated two registers
 		int number;
 		int dest;//the number of the dest register
