@@ -92,10 +92,16 @@ namespace yyh
 		int number;
 		int dest;//the number of the dest register
 		int type;
-		int anser;
+		int anser;//lo
+		int anser2;//hi
+		int opp1, opp2;//the fetched number
 		operation();
 		operation(const std::string& com, scanner& sen);
 		void execute();
+		void ID();
+		void EXE();
+		void MEM();
+		void WB();
 	};
 
 	/*

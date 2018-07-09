@@ -878,6 +878,180 @@ void yyh::operation::execute()
 		}
 	}
 }
+void yyh::operation::ID()
+{
+	if ((type >= 9 && type <= 19) || (type >= 22 && type <= 23) || (type >= 32 && type <= 37)
+		|| (type >= 25 && type <= 30))
+	{
+		if (reg1 != -1) opp1 = Registers[reg1];
+		if (reg2 != -1) opp2 = Registers[reg2];
+		else opp2 = number;
+		if (reg1 == -1)
+		{
+			opp1 = Registers[dest];
+		}
+	}
+	else if (type >= 38 && type <= 43)
+	{
+		opp1 = Registers[reg1];
+		opp2 = 0;
+	}
+	else if (type == 20 || type == 21 || type == 24 || type == 55)
+	{
+		if (reg1 != -1) opp1 = Registers[reg1];
+		else opp1 = number;
+	}
+	else if (type == 56)//mfhi
+	{
+		opp1 = Registers[33];
+	}
+	else if (type == 57)//mflo
+	{
+		opp1 = Registers[34];
+	}
+	else if (type == 45 || type == 47)
+	{
+		opp1 = Registers[dest];
+	}
+}
+void yyh::operation::EXE()
+{
+	long long tmp = 0;
+	switch (type)
+	{
+	case 9:
+		anser = opp1 + opp2;
+		break;
+	case 10:
+	case 11:
+		anser = ((unsigned int)(opp1) + (unsigned int)(opp2));
+		break;
+	case 12:
+		anser = opp1 - opp2;
+		break;
+	case 13:
+		anser = ((unsigned int)(opp1)-(unsigned int)(opp2));
+		break;
+	case 14:
+		tmp = (long long)(opp1) * (long long)(opp2);
+		anser = tmp;
+		anser2 = tmp >> 32;
+		break;
+	case 15:
+		tmp = (unsigned long long)(opp1) * (unsigned long long)(opp2);
+		anser = tmp;
+		anser2 = tmp >> 32;
+		break;
+	case 16:
+		anser = opp1 / opp2;
+		anser2 = opp1 % opp2;
+		break;
+	case 17:
+		anser = ((unsigned int)(opp1) / (unsigned int)(opp2));
+		anser2 = ((unsigned int)(opp1) % (unsigned int)(opp2));
+		break;
+	case 18:
+	case 19:
+		anser = opp1 ^ opp2;
+		break;
+	case 22:
+		anser = opp1 % opp2;
+		break;
+	case 23:
+		anser = ((unsigned int)(opp1) % (unsigned int)(opp2));
+		break;
+	case 25:
+	case 32:
+	case 38:
+		anser = (opp1 == opp2);
+		break;
+	case 26:
+	case 34:
+	case 41:
+		anser = (opp1 >= opp2);
+		break;
+	case 27:
+	case 36:
+	case 42:
+		anser = (opp1 > opp2);
+		break;
+	case 28:
+	case 35:
+	case 40:
+		anser = (opp1 <= opp2);
+		break;
+	case 29:
+	case 37:
+	case 43:
+		anser = (opp1 < opp2);
+		break;
+	case 30:
+	case 33:
+	case 39:
+		anser = (opp1 != opp2);
+		break;
+
+		//load store commands
+	case 48:
+	case 49:
+	case 50:
+	case 51:
+	case 52:
+	case 53:
+	case 54:
+		if (reg1 == -1) anser = number;//label
+		else anser = Registers[reg1] + number;//pointer
+		break;
+
+	case 20:
+		anser = -1 * opp1;
+		break;
+	case 21:
+		anser = ~opp1;
+		break;
+	case 31:
+	case 44:
+	case 45:
+	case 46:
+	case 47:
+		anser = 1;
+		break;
+	default:
+		break;
+	}
+}
+
+void yyh::operation::WB()
+{
+	if ((type >= 9 && type <= 13) || (type >= 18 && type <= 30) || (type >= 55 && type <= 57))
+		Registers[dest] = anser;
+	else if (type >= 14 && type <= 17)
+	{
+		if (reg1 != -1)
+			Registers[dest] = anser;
+		else
+		{
+			Registers[34] = anser;
+			Registers[33] = anser2;
+		}
+	}
+	else if (type >= 31 && type <= 44)//break and jump
+	{
+		if (anser)
+			Registers[32] = dest;
+	}
+	else if (type == 45 || type == 47)
+	{
+		Registers[32] = opp1;
+	}
+	else if (type == 46)
+	{
+		Registers[32] = dest;
+
+	}
+	//jal jalr uncomplete
+}
+
 yyh::pointer::pointer()
 {
 	reg_number = -1;
