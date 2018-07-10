@@ -8,6 +8,7 @@ namespace yyh
 }
 int main(int argc, char *argv[])
 {
+//	freopen("a.out", "w", stdout);
 	token::initialize_keyword();
 	reg_num_init();
 	std::ifstream text(argv[1]);

@@ -223,18 +223,9 @@ void yyh::read_in(std::ifstream & in)
 	scanner sentence;
 	token take;
 	bool data_state = true;
-//#define debug
-
 	int i = 0;
 	while (std::getline(in, str))
 	{
-#ifdef debug
-		if (i == 617)
-			std::cout << "c";
-		std::cout << i;
-		i++;
-		std::cout << str;
-#endif
 		sentence = scanner(str);
 		if (!sentence.nextToken(take)) continue;
 		if (take.type == token::Command && take.store == ".data")
@@ -567,6 +558,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 
 void yyh::operation::execute()
 {
+	/*
 	int ob1 = -111, ob2 = -111;
 	if ((type >= 9 && type <= 19) || (type >= 22 && type <= 23) || (type >= 32 && type <= 37)
 		|| (type >= 25 && type <= 30))//binary operation
@@ -877,6 +869,11 @@ void yyh::operation::execute()
 			break;
 		}
 	}
+	*/
+	ID();
+	EXE();
+	MEM();
+	WB();
 }
 void yyh::operation::ID()
 {
@@ -896,6 +893,12 @@ void yyh::operation::ID()
 		opp1 = Registers[reg1];
 		opp2 = 0;
 	}
+	else if (type >= 48 && type <= 54)
+	{
+		if (reg1 == -1) opp1 = -1;
+		else opp1 = Registers[reg1];
+		opp2 = Registers[dest];
+	}
 	else if (type == 20 || type == 21 || type == 24 || type == 55)
 	{
 		if (reg1 != -1) opp1 = Registers[reg1];
@@ -912,6 +915,26 @@ void yyh::operation::ID()
 	else if (type == 45 || type == 47)
 	{
 		opp1 = Registers[dest];
+	}
+	else if (type == 59)
+	{
+		opp1 = Registers[2];
+		switch (opp1)
+		{
+		case 1:
+		case 4:
+		case 8:
+		case 9:	
+		case 17:
+			opp2 = Registers[4];
+			break;
+		default:
+			break;
+		}
+		if (opp1 == 1)
+			std::cout << opp2;
+		if (opp1 == 17)
+			exit(opp2);
 	}
 }
 void yyh::operation::EXE()
@@ -1000,7 +1023,7 @@ void yyh::operation::EXE()
 	case 53:
 	case 54:
 		if (reg1 == -1) anser = number;//label
-		else anser = Registers[reg1] + number;//pointer
+		else anser = opp1 + number;//pointer
 		break;
 
 	case 20:
@@ -1008,6 +1031,12 @@ void yyh::operation::EXE()
 		break;
 	case 21:
 		anser = ~opp1;
+		break;
+	case 24:
+	case 55:
+	case 56:
+	case 57:
+		anser = opp1;
 		break;
 	case 31:
 	case 44:
@@ -1018,6 +1047,52 @@ void yyh::operation::EXE()
 		break;
 	default:
 		break;
+	}
+}
+
+void yyh::operation::MEM()
+{
+	switch (type)
+	{
+	case 48:
+		opp1 = anser;
+		break;
+	case 49:
+		opp1 = Memory[anser];
+		break;
+	case 50:
+		opp1 = *(short*)(Memory + anser);
+		break;
+	case 51:
+		opp1 = *(int*)(Memory + anser);
+		break;
+	case 52:
+		Memory[anser] = opp2;
+		break;
+	case 53:
+		*(short*)(Memory + anser) = opp2;
+		break;
+	case 54:
+		*(int*)(Memory + anser) = opp2;
+		break;
+	default:
+		break;
+	}
+	if (type == 59)
+	{
+		if (opp1 == 4)
+		{
+			std::cout << (char*)(Memory + opp2);
+		}
+		else if (opp1 == 8)
+		{
+			std::string ss;
+			std::cin >> ss;
+			ss += '\0';
+			char* p = Memory + opp2;
+			strncpy(p, ss.c_str(), ss.length());
+			anser = ss.length();
+		}
 	}
 }
 
@@ -1040,6 +1115,10 @@ void yyh::operation::WB()
 		if (anser)
 			Registers[32] = dest;
 	}
+	else if (type >= 48 && type <= 51)
+	{
+		Registers[dest] = opp1;
+	}
 	else if (type == 45 || type == 47)
 	{
 		Registers[32] = opp1;
@@ -1047,7 +1126,22 @@ void yyh::operation::WB()
 	else if (type == 46)
 	{
 		Registers[32] = dest;
-
+	}
+	else if (type == 59)
+	{
+		switch (opp1)
+		{
+		case 5:
+			std::cin >> Registers[2];
+			break;
+		case 8:
+			Registers[5] = anser;
+			break;
+		case 9:
+			Registers[2] = memory_pos;
+			memory_pos += opp2;
+			break;
+		}
 	}
 	//jal jalr uncomplete
 }
