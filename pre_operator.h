@@ -98,7 +98,7 @@ namespace yyh
 		operation();
 		operation(const std::string& com, scanner& sen);
 		void execute();
-		void ID();
+		bool ID();
 		void EXE();
 		void MEM();
 		void WB();

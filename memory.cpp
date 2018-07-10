@@ -3,6 +3,7 @@ namespace yyh
 {
 	std::map<std::string, int> reg_num;
 	int Registers[35];
+	int Reg_access[35];
 	char Memory[4 * 1024 * 1024];
 	std::map<std::string, int> Labels;
 	int memory_pos = 0;
@@ -44,10 +45,13 @@ void yyh::reg_num_init()
 	reg_num["$lo"] = 34;
 	reg_num["$pc"] = 32;
 
-	for (int i = 0; i < 32; i++)
+	for (int i = 0; i < 35; i++)
 		Registers[i] = 0;
 	Registers[29] = 4 * 1024 * 1024;//the top of the stack
 	Registers[30] = 0;//the bottom of the store
+
+	for (int i = 0; i < 35; i++)
+		Reg_access[i] = 0;
 }
 
 int yyh::at_register(const std::string & s)
@@ -59,11 +63,6 @@ int yyh::at_register(const std::string & s)
 void yyh::insert_memory_label(const std::string & s)
 {
 	Labels[s] = memory_pos;
-}
-
-int yyh::at_label(const std::string & s)
-{
-	return Labels[s];
 }
 void yyh::_align(int n)
 {

@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 //	freopen("a.out", "w", stdout);
 	token::initialize_keyword();
 	reg_num_init();
-	std::ifstream text(argv[1]);
+	std::ifstream text("1.s");
 	read_in(text);
 	run_();
 	text.close();

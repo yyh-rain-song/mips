@@ -327,9 +327,10 @@ void yyh::read_in(std::ifstream & in)
 		}
 	}
 }
-//#define debug
+
 void yyh::run_()
 {
+	/*
 	int current_line = operation::text_label["main"];
 	operation* op = NULL;
 	Registers[32] = current_line + 1;
@@ -342,23 +343,58 @@ void yyh::run_()
 			Registers[31] = current_line + 1;
 		current_line = Registers[32];
 		Registers[32]++;
+	}*/
 
+	operation *p2, *p3 = NULL, *p4 = NULL, *p5 = NULL;
+	int start = operation::text_label["main"];
+	p2 = &operation::text[start];
+
+	while (p2 != NULL || p3 != NULL || p4 != NULL || p5 != NULL)
+	{
+		if (p5 != NULL) p5->WB();
+		p5 = NULL;
+		if (p4 != NULL) p4->MEM();
+		p5 = p4; p4 = NULL;
+		if (p3 != NULL) p3->EXE();
+		p4 = p3; p3 = NULL;
+		if (p2 != NULL)
+		{
+			if (p2->ID())
+			{
+				p3 = p2; p2 = NULL;
+				if (Reg_access[32] == 0)
+				{
+					//IF
+					p2 = &operation::text[Registers[32]];
+#define debug
 #ifdef debug
-		std::cout << "line " << i;
-		if (i == 321)
-			std::cout << "catch";
-		i++;
-		std::cout << op->context << '\n';
-		for (int j = 0; j < 35; j++)
-			std::cout << Registers[j] << ' ';
-		std::cout << '\n';
-#endif
+					std::cout << p2->context << '\n';
+#endif // debug
+					++Registers[32];
+				}
+			}
+		}
+		else
+		{
+			if (Reg_access[32] == 0)
+			{
+				//IF
+				p2 = &operation::text[Registers[32]];
+#ifdef debug
+				std::cout << p2->context << '\n';
+#endif // debug
+
+				++Registers[32];
+			}
+		}
 	}
 }
 
 void yyh::operation::push_command(const std::string & com, scanner & sen)
 {
 	operation op(com, sen);
+	if (op.type == 46 || op.type == 47)
+		op.anser = text.size() + 1;
 	text.push_back(op);
 }
 
@@ -875,50 +911,70 @@ void yyh::operation::execute()
 	MEM();
 	WB();
 }
-void yyh::operation::ID()
+bool yyh::operation::ID()
 {
 	if ((type >= 9 && type <= 19) || (type >= 22 && type <= 23) || (type >= 32 && type <= 37)
 		|| (type >= 25 && type <= 30))
 	{
-		if (reg1 != -1) opp1 = Registers[reg1];
-		if (reg2 != -1) opp2 = Registers[reg2];
+		if (reg1 != -1)
+		{
+			if (Reg_access[reg1] == 0) opp1 = Registers[reg1];
+			else return false;
+		}
+		if (reg2 != -1)
+		{
+			if (Reg_access[reg2] == 0) opp2 = Registers[reg2];
+			else return false;
+		}
 		else opp2 = number;
 		if (reg1 == -1)
 		{
-			opp1 = Registers[dest];
+			if (Reg_access[dest] == 0) opp1 = Registers[dest];
+			else return false;
 		}
 	}
 	else if (type >= 38 && type <= 43)
 	{
-		opp1 = Registers[reg1];
+		if (Reg_access[reg1] == 0) opp1 = Registers[reg1];
+		else return false;
 		opp2 = 0;
 	}
 	else if (type >= 48 && type <= 54)
 	{
 		if (reg1 == -1) opp1 = -1;
-		else opp1 = Registers[reg1];
-		opp2 = Registers[dest];
+		else if (Reg_access[reg1] == 0) opp1 = Registers[reg1];
+		else return false;
+		if (Reg_access[dest] == 0) opp2 = Registers[dest];
+		else return false;
 	}
 	else if (type == 20 || type == 21 || type == 24 || type == 55)
 	{
-		if (reg1 != -1) opp1 = Registers[reg1];
+		if (reg1 != -1)
+		{
+			if (Reg_access[reg1] == 0) opp1 = Registers[reg1];
+			else return false;
+		}
 		else opp1 = number;
 	}
 	else if (type == 56)//mfhi
 	{
-		opp1 = Registers[33];
+		if (Reg_access[33] == 0) opp1 = Registers[33];
+		else return false;
 	}
 	else if (type == 57)//mflo
 	{
-		opp1 = Registers[34];
+		if (Reg_access[34] == 0) opp1 = Registers[34];
+		else return false;
 	}
 	else if (type == 45 || type == 47)
 	{
-		opp1 = Registers[dest];
+		if (Reg_access[dest] == 0) opp1 = Registers[dest];
+		else return false;
 	}
 	else if (type == 59)
 	{
-		opp1 = Registers[2];
+		if (Reg_access[2] == 0) opp1 = Registers[2];
+		else return false;
 		switch (opp1)
 		{
 		case 1:
@@ -926,7 +982,8 @@ void yyh::operation::ID()
 		case 8:
 		case 9:	
 		case 17:
-			opp2 = Registers[4];
+			if (Reg_access[4] == 0) opp2 = Registers[4];
+			else return false;
 			break;
 		default:
 			break;
@@ -936,6 +993,41 @@ void yyh::operation::ID()
 		if (opp1 == 17)
 			exit(opp2);
 	}
+
+	if ((type >= 9 && type <= 30) || (type >= 48 && type <= 51) || (type >= 55 && type <= 57))
+	{
+		if (type >= 14 && type <= 17 && reg1 == -1)
+		{
+			++Reg_access[34];
+			++Reg_access[33];
+			return true;
+		}
+		++Reg_access[dest];
+		return true;
+	}
+	else if (type >= 31 && type <= 45)//break and jump
+		++Reg_access[32];
+	else if (type == 46 || type == 47)//jar jarl
+	{
+		++Reg_access[31];
+		++Reg_access[32];
+	}
+	else if (type == 59)
+	{
+		switch (opp1)
+		{
+		case 5:
+			++Reg_access[2];
+			break;
+		case 8:
+			++Reg_access[5];
+			break;
+		case 9:
+			++Reg_access[2];
+			break;
+		}
+	}
+	return true;
 }
 void yyh::operation::EXE()
 {
@@ -1099,33 +1191,56 @@ void yyh::operation::MEM()
 void yyh::operation::WB()
 {
 	if ((type >= 9 && type <= 13) || (type >= 18 && type <= 30) || (type >= 55 && type <= 57))
+	{
 		Registers[dest] = anser;
+		--Reg_access[dest];
+	}
 	else if (type >= 14 && type <= 17)
 	{
 		if (reg1 != -1)
+		{
 			Registers[dest] = anser;
+			--Reg_access[dest];
+		}
 		else
 		{
 			Registers[34] = anser;
 			Registers[33] = anser2;
+			--Reg_access[34];
+			--Reg_access[33];
 		}
 	}
 	else if (type >= 31 && type <= 44)//break and jump
 	{
 		if (anser)
+		{
 			Registers[32] = dest;
+			--Reg_access[32];
+		}
 	}
 	else if (type >= 48 && type <= 51)
 	{
 		Registers[dest] = opp1;
+		--Reg_access[dest];
 	}
-	else if (type == 45 || type == 47)
+	else if (type == 45)
 	{
 		Registers[32] = opp1;
+		--Reg_access[32];
 	}
 	else if (type == 46)
 	{
 		Registers[32] = dest;
+		--Reg_access[32];
+		Registers[31] = anser;
+		--Reg_access[31];
+	}
+	else if (type == 47)
+	{
+		Registers[32] = opp1;
+		--Reg_access[32];
+		Registers[31] = anser;
+		--Reg_access[31];
 	}
 	else if (type == 59)
 	{
@@ -1133,13 +1248,16 @@ void yyh::operation::WB()
 		{
 		case 5:
 			std::cin >> Registers[2];
+			--Reg_access[2];
 			break;
 		case 8:
 			Registers[5] = anser;
+			--Reg_access[5];
 			break;
 		case 9:
 			Registers[2] = memory_pos;
 			memory_pos += opp2;
+			--Reg_access[2];
 			break;
 		}
 	}
