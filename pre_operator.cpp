@@ -339,19 +339,44 @@ void yyh::run_()
 	{
 		op = &operation::text[current_line];
 		op->execute();
+#define debug
+#ifdef debug
+		std::cout << i << ":  ";
+		i++;
+		std::cout << op->context << '\n';
+		for (int j = 0; j < 35; j++)
+			std::cout << Registers[j] << ' ';
+		std::cout << '\n';
+#endif // debug
+
 		if (op->type == 46 || op->type == 47)
 			Registers[31] = current_line + 1;
 		current_line = Registers[32];
 		Registers[32]++;
 	}*/
-
+	
 	operation *p2, *p3 = NULL, *p4 = NULL, *p5 = NULL;
 	int start = operation::text_label["main"];
 	p2 = &operation::text[start];
-
+	Registers[32] = start + 1;
+	int i = 0;
 	while (p2 != NULL || p3 != NULL || p4 != NULL || p5 != NULL)
 	{
 		if (p5 != NULL) p5->WB();
+//#define debug
+#ifdef debug
+		if (p5 != NULL)
+		{
+			if (i == 44)
+				std::cout << "catch";
+			std::cout << i << ":  ";
+			i++;
+			std::cout << p5->context << '\n';
+			for (int j = 0; j < 35; j++)
+				std::cout << Registers[j] << ' ';
+			std::cout << '\n';
+		}
+#endif // debug
 		p5 = NULL;
 		if (p4 != NULL) p4->MEM();
 		p5 = p4; p4 = NULL;
@@ -366,10 +391,6 @@ void yyh::run_()
 				{
 					//IF
 					p2 = &operation::text[Registers[32]];
-#define debug
-#ifdef debug
-					std::cout << p2->context << '\n';
-#endif // debug
 					++Registers[32];
 				}
 			}
@@ -380,10 +401,6 @@ void yyh::run_()
 			{
 				//IF
 				p2 = &operation::text[Registers[32]];
-#ifdef debug
-				std::cout << p2->context << '\n';
-#endif // debug
-
 				++Registers[32];
 			}
 		}
@@ -394,7 +411,7 @@ void yyh::operation::push_command(const std::string & com, scanner & sen)
 {
 	operation op(com, sen);
 	if (op.type == 46 || op.type == 47)
-		op.anser = text.size() + 1;
+		op.opp2 = text.size() + 1;
 	text.push_back(op);
 }
 
@@ -1215,8 +1232,8 @@ void yyh::operation::WB()
 		if (anser)
 		{
 			Registers[32] = dest;
-			--Reg_access[32];
 		}
+		--Reg_access[32];
 	}
 	else if (type >= 48 && type <= 51)
 	{
@@ -1232,14 +1249,14 @@ void yyh::operation::WB()
 	{
 		Registers[32] = dest;
 		--Reg_access[32];
-		Registers[31] = anser;
+		Registers[31] = opp2;
 		--Reg_access[31];
 	}
 	else if (type == 47)
 	{
 		Registers[32] = opp1;
 		--Reg_access[32];
-		Registers[31] = anser;
+		Registers[31] = opp2;
 		--Reg_access[31];
 	}
 	else if (type == 59)
