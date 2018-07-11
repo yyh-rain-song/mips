@@ -40,7 +40,7 @@ namespace yyh
 
 		tokenType type;
 	};
-
+	extern int pc_tmp;
 	/*
 	 * this is a class dealing with every sentence
 	 */
@@ -95,6 +95,7 @@ namespace yyh
 		int anser;//lo
 		int anser2;//hi
 		int opp1, opp2;//the fetched number
+		int history;//for branch jump orders
 		operation();
 		operation(const std::string& com, scanner& sen);
 		void execute();
@@ -109,6 +110,6 @@ namespace yyh
 	 */
 	void read_in(std::ifstream& in);
 
-	void run_();
+	void run_(); 
 }
 #endif // !pre_operation_h

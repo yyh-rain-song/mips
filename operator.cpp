@@ -1,13 +1,15 @@
-#include "pre_operator.h"
+#include "operator.h"
 using namespace yyh;
 
-
-std::map<std::string, int> token::Key_word;
-std::vector<operation> operation::text;
-std::map<std::string, int> operation::text_label;
-std::vector<std::string> operation::tmp_tl;
-std::vector<std::string> operation::tmp_ll;
-
+namespace yyh
+{
+	std::map<std::string, int> token::Key_word;
+	std::vector<operation> operation::text;
+	std::map<std::string, int> operation::text_label;
+	std::vector<std::string> operation::tmp_tl;
+	std::vector<std::string> operation::tmp_ll;
+	int pc_tmp;
+}
 scanner::scanner(const std::string & instring)
 {
 	store = instring;
@@ -381,28 +383,33 @@ void yyh::run_()
 		if (p4 != NULL) p4->MEM();
 		p5 = p4; p4 = NULL;
 		if (p3 != NULL) p3->EXE();
+
+		//branch predict
+		if (p3 != NULL && p3->type >= 31 && p3->type <= 43)
+		{
+			//if predict wrong
+			if ((p3->anser && p3->history <= 1) || (!p3->anser && p3->history >= 2))
+			{
+				p2 = NULL;
+			}
+			//edit history
+			if (p3->anser)
+				p3->history = (p3->history << 1 + 1) | 3;
+			else p3->history = (p3->history << 1) | 3;
+		}
+
 		p4 = p3; p3 = NULL;
 		if (p2 != NULL)
 		{
 			if (p2->ID())
 			{
 				p3 = p2; p2 = NULL;
-				if (Reg_access[32] == 0)
-				{
-					//IF
-					p2 = &operation::text[Registers[32]];
-					++Registers[32];
-				}
+				p2 = &operation::text[Registers[32]];
 			}
 		}
 		else
 		{
-			if (Reg_access[32] == 0)
-			{
-				//IF
-				p2 = &operation::text[Registers[32]];
-				++Registers[32];
-			}
+			p2 = &operation::text[Registers[32]];
 		}
 	}
 }
@@ -430,6 +437,7 @@ yyh::operation::operation(const std::string & com, scanner & sen)//sen: the rema
 	type = token::Key_word[com];
 	dest = reg1 = reg2 = -1;
 	number = 0;
+	history = 0;
 	token tmp;
 	switch (type)
 	{
@@ -1010,24 +1018,46 @@ bool yyh::operation::ID()
 		if (opp1 == 17)
 			exit(opp2);
 	}
-
+	//lock registers;
 	if ((type >= 9 && type <= 30) || (type >= 48 && type <= 51) || (type >= 55 && type <= 57))
 	{
 		if (type >= 14 && type <= 17 && reg1 == -1)
 		{
 			++Reg_access[34];
 			++Reg_access[33];
+			++Registers[32];
 			return true;
 		}
 		++Reg_access[dest];
+		++Registers[32];
 		return true;
 	}
-	else if (type >= 31 && type <= 45)//break and jump
-		++Reg_access[32];
-	else if (type == 46 || type == 47)//jar jarl
+	else if (type >= 31 && type <= 43)//branch jump
 	{
+		if (history >= 2)//predict jump accur
+		{
+			pc_tmp = Registers[32] + 1;
+			Registers[32] = dest;
+		}
+		else
+		{
+			Registers[32] = Registers[32] + 1;
+			pc_tmp = dest;
+		}
+	}
+	else if (type == 44)
+		Registers[32] = dest;
+	else if (type == 45)
+		Registers[32] = opp1;
+	else if (type == 46)//jar jarl
+	{
+		Registers[32] = dest;
 		++Reg_access[31];
-		++Reg_access[32];
+	}
+	else if (type == 47)
+	{
+		Registers[32] = opp1;
+		++Reg_access[31];
 	}
 	else if (type == 59)
 	{
@@ -1044,6 +1074,8 @@ bool yyh::operation::ID()
 			break;
 		}
 	}
+	if (type <= 30 || type >= 48)
+		++Registers[32];
 	return true;
 }
 void yyh::operation::EXE()
@@ -1157,6 +1189,11 @@ void yyh::operation::EXE()
 	default:
 		break;
 	}
+	if (type >= 31 && type <= 43)
+	{
+		if ((anser && history <= 1) || (!anser && history >= 2))//predict wrong
+			Registers[32] = pc_tmp;
+	}
 }
 
 void yyh::operation::MEM()
@@ -1227,35 +1264,18 @@ void yyh::operation::WB()
 			--Reg_access[33];
 		}
 	}
-	else if (type >= 31 && type <= 44)//break and jump
-	{
-		if (anser)
-		{
-			Registers[32] = dest;
-		}
-		--Reg_access[32];
-	}
 	else if (type >= 48 && type <= 51)
 	{
 		Registers[dest] = opp1;
 		--Reg_access[dest];
 	}
-	else if (type == 45)
-	{
-		Registers[32] = opp1;
-		--Reg_access[32];
-	}
 	else if (type == 46)
 	{
-		Registers[32] = dest;
-		--Reg_access[32];
 		Registers[31] = opp2;
 		--Reg_access[31];
 	}
 	else if (type == 47)
 	{
-		Registers[32] = opp1;
-		--Reg_access[32];
 		Registers[31] = opp2;
 		--Reg_access[31];
 	}

@@ -118,11 +118,11 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="memory.cpp" />
-    <ClCompile Include="pre_operator.cpp" />
+    <ClCompile Include="operator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="memory.h" />
-    <ClInclude Include="pre_operator.h" />
+    <ClInclude Include="operator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
